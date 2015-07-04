@@ -1,5 +1,6 @@
 import os
 import re
+import bot
 import yaml
 import json
 import praw
@@ -8,7 +9,6 @@ import datetime
 
 from lxml import html
 from operator import itemgetter
-from bot import username, password
 
 subreddit = "csgobetting"
 __version__ = "1.0-beta"
@@ -430,7 +430,7 @@ def main():
 
 		# Connect to reddit with praw
 		r = praw.Reddit("CSGO Competitive Stats Bot v" + __version__)
-		r.login(username(), password())
+		r.login(bot.username(), bot.password())
 
 		# Load posts, comments, and messages
 		posts = r.get_subreddit(subreddit).get_new(limit = 20)
