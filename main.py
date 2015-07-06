@@ -1,17 +1,20 @@
 import os
 import re
+import sys
 import bot
 import yaml
 import json
 import praw
 import requests
 import datetime
+import configparser
 
 from lxml import html
 from operator import itemgetter
 
 subreddit = "csgobetting"
-__version__ = "1.0-beta"
+__author__ = "xoru"
+__version__ = "1.1-beta"
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))) + '/'
 
 
@@ -326,7 +329,7 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 
 	comment = ""
 
-	if found_players is not None:
+	if found_players:
 		comment += "###Player Stats\n"
 		comment += "Player Name|Team|Rating [(?)](http://www.hltv.org/?pageid=242)|Total K/D|K/D Ratio|Kills per round\n:|:|:|:|:|:|:\n"
 
@@ -342,7 +345,7 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 				player['kills_per_round'] + "\n"
 			)
 
-	if found_teams is not None:
+	if found_teams:
 		comment += "\n###Team Stats\n"
 		comment += "Team Name|Maps Played|Won|Recent matches\n:|:|:|:\n"
 
@@ -399,7 +402,7 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 		comment += "\n^(Last edited by: /u/" + edited_by + ")\n"
 
 	comment += (
-		"\n^(Version + " + __version__ + ") ^| " +
+		"\n^(Version " + __version__ + ") ^| " +
 		"[^contact](http://www.reddit.com/message/compose/?to=xoru) ^| " +
 		"[^(bot info)](http://redd.it/30srzq/) ^| " +
 		"[^source](http://github.com/xoru/CSGO_Bot) ^| " +
@@ -423,206 +426,235 @@ def create_poll(teams):
 	return False
 
 def main():
-	try:
-		players = get_yaml("players")
-		teams = get_yaml("teams")
-		bot.log("Players and teams loaded.")
 
-		# Connect to reddit with praw
-		r = praw.Reddit("CSGO Competitive Stats Bot v" + __version__)
-		r.login(bot.username(), bot.password())
+	oauth = configparser.ConfigParser()
+	oauth.read('oauth.ini')
 
-		# Load posts, comments, and messages
-		posts = r.get_subreddit(subreddit).get_new(limit = 20)
-		comments = []
-		messages = r.get_messages(limit = 15)
+	players = get_yaml("players")
+	teams = get_yaml("teams")
+	bot.log("Players and teams loaded.")
 
-		for message in messages:
-			if not file_string_exists('messages.txt', message.id): # If we haven't already dealt with this message
-				if message.subject == "COMMAND: No PM":
-					file_string_append('nopm.txt', message.author.name)
-					r.send_message(message.author.name, "Command successful", "You will no longer receive edit confirmation messages.\n\n---\n^(This was an automated message. Regret your decision already? Click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.) ^(to turn edit confirmation messages back on again.)")
-					bot.log("Added " + message.author.name + " to nopm.txt")
-				elif message.subject == "COMMAND: PM":
-					file_string_remove('nopm.txt', message.author.name)
-					r.send_message(message.author.name, "Command successful", "You will now receive edit confirmation messages.\n\n---\n^(This was an automated message. Regret your decision already? Click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20No%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.) ^(to turn edit confirmation messages back off again.)")
-					bot.log("Deleted " + message.author.name + " from nopm.txt")
-				file_string_append('messages.txt', message.id) # Mark message as done.
+	# Connect to reddit with praw, set oauth info.
+	r = praw.Reddit("CSGO Competitive Stats Bot v" + __version__,
+		oauth_client_id = oauth['OAuth']['client_id'],
+		oauth_client_secret = oauth['OAuth']['client_secret'],
+		oauth_redirect_uri = oauth['OAuth']['redirect_uri']
+	)
 
-		for post in posts:
-			if (post.link_flair_text == "Match" or post.link_flair_text == "Match has started") and "|" in post.title:
-				comments.extend(praw.helpers.flatten_tree(post.comments))
+	# OAuth access information. https://github.com/xoru/easy-oauth
+	access_information = {
+		'access_token': oauth['OAuth']['access_token'],
+		'refresh_token': oauth['OAuth']['refresh_token'],
+		'scope': oauth['Scope']
+	}
 
-				if not file_string_exists("posts.txt", post.id):
-					found_teams = find_teams(post.title, teams, False)
-					found_players = find_players(post.selftext, players, True)
+	# Update access_token with our permanent refresh_token.
+	access_information = r.refresh_access_information(access_information['refresh_token'])
 
+	r.set_access_credentials(**access_information)
+
+
+	# Load posts, comments, and messages
+	posts = r.get_subreddit(subreddit).get_new(limit = 20)
+	comments = []
+	messages = r.get_messages(limit = 15)
+
+	bot.log("Looking at messages")
+	for message in messages:
+		if not file_string_exists('messages.txt', message.id): # If we haven't already dealt with this message
+			if message.subject == "COMMAND: No PM":
+				file_string_append('nopm.txt', message.author.name)
+				r.send_message(message.author.name, "Command successful", "You will no longer receive edit confirmation messages.\n\n---\n^(This was an automated message. Regret your decision already? Click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.) ^(to turn edit confirmation messages back on again.)")
+				bot.log("Added " + message.author.name + " to nopm.txt")
+			elif message.subject == "COMMAND: PM":
+				file_string_remove('nopm.txt', message.author.name)
+				r.send_message(message.author.name, "Command successful", "You will now receive edit confirmation messages.\n\n---\n^(This was an automated message. Regret your decision already? Click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20No%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.) ^(to turn edit confirmation messages back off again.)")
+				bot.log("Deleted " + message.author.name + " from nopm.txt")
+			file_string_append('messages.txt', message.id) # Mark message as done.
+
+	bot.log("Looking at posts")
+	for post in posts:
+		if (post.link_flair_text == "Match" or post.link_flair_text == "Match has started") and "|" in post.title:
+			post.replace_more_comments(limit = 15, threshold = 1)
+			comments.extend(praw.helpers.flatten_tree(post.comments))
+
+			if not file_string_exists("posts.txt", post.id):
+				found_teams = find_teams(post.title, teams, False)
+				found_players = find_players(post.selftext, players, True)
+
+				poll_teams = [teams[team]['names'][0] for team in found_teams]
+				strawpoll = create_poll(poll_teams)
+				reply = construct_comment(found_teams, found_players, teams, players, strawpoll, True)
+
+				# Add comment to thread
+				added_comment = post.add_comment(reply)
+				bot.log("Added comment to " + post.id)
+
+				# Store post id
+				file_string_append("posts.txt", post.id)
+
+				# Add reply information
+				replies = get_yaml("replies")
+				replies.update({added_comment.id: {
+					'players':   found_players,
+					'teams':     found_teams,
+					'strawpoll': strawpoll
+				}})
+				set_yaml("replies", replies)
+
+	bot.log("Looking at comments")
+	for comment in comments:
+		if not file_string_exists("comments.txt", comment.id):
+			# Skip comment if it doesn't mention us, or if ignore command is used.
+			if "u/csgo_bot" not in comment.body.lower() or "+ignore" in comment.body.lower():
+				continue
+
+			# Skip comment if it is deleted.
+			if comment.body == None or comment.author == None:
+				continue
+
+			# Let's not reply to ourselves or ignored users.
+			if comment.author.name == "CSGO_Bot" or file_string_exists("ignored.txt", comment.author.name):
+				continue
+
+			# Skip comments that have both remove and add commands.
+			if ("+p" in comment.body.lower() and "-p" in comment.body.lower()) or ("+t" in comment.body.lower() and "-t" in comment.body.lower()):
+				continue
+
+			bot.log("Looking at comment.")
+
+			case_sensitivity = False
+			remove_players = False
+			remove_teams = False
+			found_players = []
+			found_teams = []
+			activated_commands = []
+
+			if "+case" in comment.body.lower():
+				case_sensitivity = True
+				activated_commands.append("+case")
+
+			# Both +p and -p have to use the find_players function to detect players, so let's deal with them both here.
+			if "+p" in comment.body.lower() or "-p" in comment.body.lower():
+				found_players = find_players(comment.body, players, case_sensitivity)
+
+				if "-p" in comment.body.lower():
+					# Mark the players we just found as ones we want to remove.
+					remove_players = True
+					activated_commands.append("-p")
+				else:
+					activated_commands.append("+p")
+
+			if "+t" in comment.body.lower() or "-t" in comment.body.lower():
+				found_teams = find_teams(comment.body, teams, False)
+
+				if "-t" in comment.body.lower():
+					remove_teams = True
+					activated_commands.append("-t")
+				else:
+					activated_commands.append("+t")
+
+			if found_players or found_teams:
+				if "+reply" not in comment.body.lower() and comment.is_root == False:
+					parent = r.get_info(thing_id=comment.parent_id)
+					if parent.author.name == "CSGO_Bot":
+
+						replies = get_yaml("replies")
+						parent_players = replies[parent.id]['players']
+						parent_teams = replies[parent.id]['teams']
+						strawpoll = replies[parent.id]['strawpoll']
+						final_players = None
+						final_teams = None
+						player_difference = False
+						team_difference = False
+
+						if found_players:
+							if remove_players:
+								final_players = [player for player in parent_players if player not in found_players]
+							else:
+								# Merge lists together (No duplicates)
+								final_players = list(set(parent_players) | set(found_players))
+
+							if parent_players != final_players:
+								player_difference = True
+						else:
+							final_players = parent_players
+
+						if found_teams:
+							if remove_teams:
+								final_teams = [team for team in parent_teams if team not in found_teams]
+							else:
+								final_teams = list(set(parent_teams) | set(found_teams))
+
+							# Check if we need to create a new strawpoll
+							if parent_teams != final_teams:
+								parent_teams = final_teams
+								team_difference = True
+								poll_teams = [teams[team]['names'][0] for team in final_teams]
+								strawpoll = create_poll(poll_teams)
+						else:
+							final_teams = parent_teams
+
+						# Only edit the comment if there is a difference between the old and new one.
+						if player_difference or team_difference:
+							reply = construct_comment(final_teams, final_players, teams, players, strawpoll, True, comment.author.name)
+
+							# Edit the parent comment with the new information.
+							parent.edit(reply)
+							bot.log("Edited " + parent.id + " from " + comment.id + " (" + comment.author.name + ")")
+
+							file_string_append("comments.txt", comment.id)
+
+							# Update reply information.
+							replies = get_yaml("replies")
+							replies.update({parent.id: {
+								'players':   final_players,
+								'teams':     final_teams,
+								'strawpoll': strawpoll
+							}})
+							set_yaml("replies", replies)
+
+							# If the commenter wants to recieve edit-PMs
+							if not file_string_exists('nopm.txt', comment.author.name):
+								message = "[Link](" + parent.permalink + ")\n\nActivated commands: " + ", ".join(activated_commands) + "\n\n"
+
+								if player_difference:
+									message += "Players detected: "
+
+									# Find out which players added are new ones
+									new_players = [player for player in found_players if player not in parent_players]
+									bot.log(str(found_players))
+									message += ", ".join("[" + found_players[player]['name'] + "](http://www.hltv.org/?pageid=173&playerid=" + player + ")" for player in new_players) + "\n\n"
+
+								if team_difference:
+									message += "Teams detected: "
+									new_teams = [team for team in found_teams if team not in parent_teams]
+									message += ", ".join("[" + found_teams[team]['names'][0] + "](http://www.hltv.org/?pageid=179&teamid=" + team + ")" for team in new_teams) + "\n\n"
+
+								message += "---\n^(This was an automated message. If you don't want to receive confirmation on summoning, click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20No%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.)."
+								r.send_message(comment.author.name, "Edit successful", message)
+								bot.log("Sent confirmation message to " + comment.author.name)
+
+				else:
 					poll_teams = [teams[team]['names'][0] for team in found_teams]
 					strawpoll = create_poll(poll_teams)
-					reply = construct_comment(found_teams, found_players, teams, players, strawpoll, True)
 
-					# Add a comment
-					added_comment = post.add_comment(reply)
-					bot.log("Added comment to " + post.id)
+					# Don't make strawpolls for comment replies
+					reply = construct_comment(found_teams, found_players, teams, players, None, False, comment.author.name)
+					added_comment = comment.reply(reply)
 
-					# Store post id
-					file_string_append("posts.txt", post.id)
-
-					# Add reply information
 					replies = get_yaml("replies")
 					replies.update({added_comment.id: {
 						'players':   found_players,
-						'teams':     found_teams,
-						'strawpoll': strawpoll
+						'teams':     found_teams
 					}})
 					set_yaml("replies", replies)
 
-		for comment in comments:
-			if not file_string_exists("comments.txt", comment.id):
-
-				# Skip comment if it doesn't mention us, or if ignore command is used.
-				if "u/csgo_bot" not in comment.body.lower() or "+ignore" in comment.body.lower():
-					continue
-
-				# Skip comment if it is deleted.
-				if comment.body == None or comment.author == None:
-					continue
-
-				# Let's not reply to ourselves or ignored users.
-				if comment.author.name == "CSGO_Bot" or file_string_exists("ignored.txt", comment.author.name):
-					continue
-
-				# Skip comments that have both remove and add commands.
-				if ("+p" in comment.body.lower() and "-p" in comment.body.lower()) or ("+t" in comment.body.lower() and "-t" in comment.body.lower()):
-					continue
-
-				case_sensitivity = False
-				remove_players = False
-				remove_teams = False
-				found_players = []
-				found_teams = []
-				activated_commands = []
-
-				if "+case" in comment.body.lower():
-					case_sensitivity = True
-					activated_commands.append("+case")
-
-				# Both +p and -p have to use the find_players function to detect players, so let's deal with them both here.
-				if "+p" in comment.body.lower() or "-p" in comment.body.lower():
-					found_players = find_players(comment.body, players, case_sensitivity)
-
-					if "-p" in comment.body.lower():
-						# Mark the players we just found as ones we want to remove.
-						remove_players = True
-						activated_commands.append("-p")
-					else:
-						activated_commands.append("+p")
-
-				if "+t" in comment.body.lower() or "-t" in comment.body.lower():
-					found_teams = find_teams(comment.body, teams, False)
-
-					if "-t" in comment.body.lower():
-						remove_teams = True
-						activated_commands.append("-t")
-					else:
-						activated_commands.append("+t")
-
-				if found_players or found_teams:
-					if "+reply" not in comment.body.lower() and comment.is_root == False:
-						parent = r.get_info(thing_id=comment.parent_id)
-						if parent.author.name == "CSGO_Bot":
-
-							replies = get_yaml("replies")
-							parent_players = replies[parent.id]['players']
-							parent_teams = replies[parent.id]['teams']
-							strawpoll = replies[parent.id]['strawpoll']
-							final_players = None
-							final_teams = None
-							player_difference = False
-							team_difference = False
-
-							if found_players:
-								if remove_players:
-									final_players = [player for player in parent_players if player not in found_players]
-								else:
-									# Merge lists together (No duplicates)
-									final_players = list(set(parent_players) | set(found_players))
-
-								if parent_players != final_players:
-									player_difference = True
-							else:
-								final_players = parent_players
-
-							if found_teams:
-								if remove_teams:
-									final_teams = [team for team in parent_teams if team not in found_teams]
-								else:
-									final_teams = list(set(parent_teams) | set(found_teams))
-
-								# Check if we need to create a new strawpoll
-								if parent_teams != final_teams:
-									parent_teams = final_teams
-									team_difference = True
-									poll_teams = [teams[team]['names'][0] for team in final_teams]
-									strawpoll = create_poll(poll_teams)
-							else:
-								final_teams = parent_teams
-
-							# Only edit the comment if there is a difference between the old and new one.
-							if player_difference or team_difference:
-								reply = construct_comment(final_teams, final_players, teams, players, strawpoll, True, comment.author.name)
-
-								# Edit the parent comment with the new information.
-								parent.edit(reply)
-								bot.log("Edited " + parent.id + " from " + comment.id + " (" + comment.author.name + ")")
-
-								file_string_append("comments.txt", comment.id)
-
-								# Update reply information.
-								replies = get_yaml("replies")
-								replies.update({parent.id: {
-									'players':   final_players,
-									'teams':     final_teams,
-									'strawpoll': strawpoll
-								}})
-								set_yaml("replies", replies)
-
-								# If the commenter wants to recieve edit-PMs
-								if not file_string_exists('nopm.txt', comment.author.name):
-									message = "[Link](" + parent.permalink + ")\n\nActivated commands: " + ", ".join(activated_commands) + "\n\n"
-
-									if player_difference:
-										message += "Players detected: "
-
-										# Find out which players added are new ones
-										new_players = [player for player in found_players if player not in parent_players]
-										bot.log(str(found_players))
-										message += ", ".join("[" + found_players[player]['name'] + "](http://www.hltv.org/?pageid=173&playerid=" + player + ")" for player in new_players) + "\n\n"
-
-									if team_difference:
-										message += "Teams detected: "
-										new_teams = [team for team in found_teams if team not in parent_teams]
-										message += ", ".join("[" + found_teams[team]['names'][0] + "](http://www.hltv.org/?pageid=179&teamid=" + team + ")" for team in new_teams) + "\n\n"
-
-									message += "---\n^(This was an automated message. If you don't want to receive confirmation on summoning, click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20No%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.)."
-									r.send_message(comment.author.name, "Edit successful", message)
-									bot.log("Sent confirmation message to " + comment.author.name)
-
-					else:
-						poll_teams = [teams[team]['names'][0] for team in found_teams]
-						strawpoll = create_poll(poll_teams)
-
-						# Don't make strawpolls for comment replies
-						reply = construct_comment(found_teams, found_players, teams, players, None, False, comment.author.name)
-						added_comment = comment.reply(reply)
-
-						replies = get_yaml("replies")
-						replies.update({added_comment.id: {
-							'players':   found_players,
-							'teams':     found_teams
-						}})
-						set_yaml("replies", replies)
+if __name__ == "__main__":
+	try:
+		main()
+		bot.log("Done!")
+		sys.exit(1) # No unclosed socket ResourceWarning.
 	except KeyboardInterrupt:
-		bot.log("\nForcefully quit.")
-
-main()
+		bot.log("Forcefully quit.")
+		sys.exit(1)
