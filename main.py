@@ -14,7 +14,7 @@ from operator import itemgetter
 
 subreddit = "csgobetting"
 __author__ = "xoru"
-__version__ = "1.1-beta"
+__version__ = "1.2-beta"
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))) + '/'
 
 
@@ -86,10 +86,11 @@ def update_teams(id = 0):
 		id += 1
 		page = requests.get("http://www.hltv.org/?pageid=179&teamid=" + str(id))
 		tree = html.fromstring(page.text)
-		name = tree.xpath('(//div[contains(., "Team stats: ") and @class="tab_content"])[1]/text()')[0].replace("Team stats: ", "").strip()
-		maps = tree.xpath('(//div[@style="font-weight:normal;width:180px;float:left;color:black;text-align:right;"])[1]/text()')[0]
 
-		if str(name) == "No team" or str(name) == "Key stats":
+		name = tree.xpath('(//div[contains(text(), "Team stats: ")])/text()')[0].replace("Team stats: ", "").strip()
+		maps_played = tree.xpath('(//div[normalize-space(text())="Maps played"]/../div[2])/text()')[0]
+
+		if str(name) == "No team":
 			invalid += 1
 			bot.log("No team found")
 			continue
@@ -98,13 +99,10 @@ def update_teams(id = 0):
 		page = requests.get("http://www.hltv.org/?pageid=188&teamid=" + str(id))
 		tree = html.fromstring(page.text)
 
-		try:
-			latest_match = tree.xpath('(//*[@id="back"]/div[12]/div[3]/div[2]/div[3]/div/div[6]/div/a[1]/div)/text()')[0]
-		except IndexError:
-			latest_match = tree.xpath('(//*[@id="back"]/div[10]/div[3]/div[2]/div[3]/div/div[6]/div/a[1]/div)/text()')[0]
+		latest_match = tree.xpath('(//div[normalize-space(text())="Team1"]/../../div[6]/div/a[1]/div)/text()')[0]
 
 		# Check if team has played at least one match in 2014 or later.
-		if int(maps) > 0 and int(latest_match.split()[1]) >= 14:
+		if int(maps_played) > 0 and int(latest_match.split()[1]) >= 14:
 			teams = get_yaml("teams")
 			teams.update({id: {"names": [str(name)]}})
 			set_yaml("teams", teams)
@@ -117,10 +115,11 @@ def update_players(id = 0):
 
 		page = requests.get("http://www.hltv.org/?pageid=173&playerid=" + str(id)) # Overview page
 		tree = html.fromstring(page.text)
-		name = tree.xpath('(//div[@class="covSmallHeadline" and @style="width:100%;float:left;"])[1]/text()')[0]
-		maps = tree.xpath('(//div[@class="covSmallHeadline" and @style="font-weight:normal;width:100px;float:left;text-align:right;color:black"])[5]/text()')[0]
 
-		if str(name) == "N/A" or str(name) == "Key stats":
+		name = tree.xpath('(//div[normalize-space(text())="Primary team:"]/../../../div[1]/div[2])/text()')[0]
+		maps_played = tree.xpath('(//div[normalize-space(text())="Maps played"]/../div[2])/text()')[0]
+
+		if str(name) == "N/A":
 			invalid += 1
 			continue
 
@@ -129,15 +128,12 @@ def update_players(id = 0):
 		tree = html.fromstring(page.text)
 
 		try:
-			latest_match = tree.xpath('(//*[@id="back"]/div[12]/div[3]/div[2]/div[2]/div[2]/div/div[6]/div/div[1]/a)/text()')[0]
+			latest_match = tree.xpath('(//div[normalize-space(text())="Team1"]/../../div[6]/div/div[1]/a)/text()')[0]
 		except IndexError:
-			latest_match = tree.xpath('(//*[@id="back"]/div[10]/div[3]/div[2]/div[2]/div[2]/div/div[6]/div/div[1]/a)/text()')[0]
-
-		if not latest_match:
 			continue
 
 		# Check if player has played at least one match in 2014 or later
-		if int(maps) > 0 and int(latest_match.split()[1]) >= 14:
+		if int(maps_played) > 0 and int(latest_match.split()[1]) >= 14:
 			players = get_yaml("players")
 			players.update({id: {"name": str(name)}})
 			set_yaml("players", players)
@@ -202,28 +198,19 @@ def get_player_stats(found_players, players):
 		page = requests.get(url)
 		tree = html.fromstring(page.text)
 
-		# The main div index on HLTV changes frequently between 10 and 12.
-		main_div = 12
-
-		# Find out which main div index is being used.
-		try:
-			tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[2]/div[2]/div[9]/div/div[2]/a)/text()')[0]
-		except IndexError:
-			main_div = 10
-
-		# Web scraping is a dirty... dirty... job...
-		team            = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[2]/div[2]/div[9]/div/div[2]/a)/text()')[0]
-		rating          = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[21]/div/div[2])/text()')[0]
-		total_kills     = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[3]/div/div[2])/text()')[0]
-		total_deaths    = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[7]/div/div[2])/text()')[0]
-		kd_ratio        = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[9]/div/div[2])/text()')[0]
-		kills_per_round = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[15]/div/div[2])/text()')[0]
+		team = tree.xpath('(//div[normalize-space(text())="Primary team:"]/../div[2]/a)/text()')[0]
+		team_url = tree.xpath('(//div[normalize-space(text())="Primary team:"]/../div[2]/a)/@href')[0]
+		rating = tree.xpath('(//div[normalize-space(text())="Rating"]/../div[2])/text()')[0]
+		total_kills = tree.xpath('(//div[normalize-space(text())="Total kills"]/../div[2])/text()')[0]
+		total_deaths = tree.xpath('(//div[normalize-space(text())="Total deaths"]/../div[2])/text()')[0]
+		kd_ratio = tree.xpath('(//div[normalize-space(text())="K/D Ratio"]/../div[2])/text()')[0]
+		kills_per_round = tree.xpath('(//div[normalize-space(text())="Average kills per round"]/../div[2])/text()')[0]
 
 		stats = {
 			'name':            players[player]['name'],
 			'url':             url,
 			'team':            team,
-			'team_url':        "http://www.hltv.org" + tree.xpath('(//a[text()="' + team + '"]/@href)')[0],
+			'team_url':        team_url,
 			'rating':          rating,
 			'total_kills':     total_kills,
 			'total_deaths':    total_deaths,
@@ -243,13 +230,8 @@ def get_team_stats(found_teams, teams):
 		tree = html.fromstring(page.text)
 		main_div = 12
 
-		try:
-			tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[5]/div/div[2])/text()')[0]
-		except IndexError:
-			main_div = 10
-
-		wdl         = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[5]/div/div[2])/text()')[0].replace(" ", "").split("/")
-		maps_played = tree.xpath('(//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div[2]/div[3]/div/div[2])/text()')[0]
+		maps_played = tree.xpath('(//div[normalize-space(text())="Maps played"]/../div[2])/text()')[0]
+		wdl = tree.xpath('(//div[normalize-space(text())="Wins / draws / losses"]/../div[2])/text()')[0].replace(" ", "").split("/")
 		total_played = int(wdl[0]) + int(wdl[2])
 		win_percentage = str(round((int(wdl[0]) / total_played) * 100)) + "%"
 
@@ -267,16 +249,16 @@ def get_team_stats(found_teams, teams):
 		for match in range(5):
 			i = 6 + (match * 2)
 			try:
-				match_link = tree.xpath('//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div/div[' + str(i) + ']/div/a[1]/@href')
+				match_link = tree.xpath('//div[normalize-space(text())="Team1"]/../../div[' + str(i) + ']/div/a[1]/@href')[0]
 
-				match_team1 = tree.xpath('//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div/div[' + str(i) + ']/div/a[2]/div/text()')[0]
+				match_team1 = tree.xpath('//div[normalize-space(text())="Team1"]/../../div[' + str(i) + ']/div/a[2]/div/text()')[0]
 				match_team1 = match_team1[match_team1.index("(") + 1:match_team1.rindex(")")] # Get text inside parentheses
 
-				match_team2 = tree.xpath('//*[@id="back"]/div[' + str(main_div) + ']/div[3]/div[2]/div[3]/div/div[' + str(i) + ']/div/a[3]/div/text()')[0]
+				match_team2 = tree.xpath('//div[normalize-space(text())="Team1"]/../../div[' + str(i) + ']/div/a[3]/div/text()')[0]
 				match_team2 = match_team2[match_team2.index("(") + 1:match_team2.rindex(")")]
 
 				match = {
-					'url':  "http://www.hltv.org" + match_link[0],
+					'url':  "http://www.hltv.org" + match_link,
 					'team1': match_team1,
 					'team2': match_team2
 				}
@@ -295,9 +277,16 @@ def get_matchup(team1, team2):
 
 	page = requests.get("http://www.csgonuts.com/history?t1=" + team1['csgonuts'] + "&t2=" + team2['csgonuts'])
 	tree = html.fromstring(page.text)
-	error_message = tree.xpath('(/html/body/div/div[2]/div[1]/div[2]/div)/text()')[0]
+	try:
+		# If the two teams have not played against each other.
+		error_message = tree.xpath('(//div[contains(text(), "We have no record of match between")])/text()')[0]
+		return None
+	except IndexError:
+		pass
 
-	if 'We have no record of match between' in error_message:
+	# If we have been redirected (Should only happen if a team does not exist).
+	if page.history:
+		bot.log("page.history is not empty. " + team1['csgonuts'] + " or " + team2['csgonuts'] + " does not exist on csgonuts.")
 		return None
 
 	matches_played = tree.xpath('(/html/body/div/div[2]/div[2]/div[2]/div[3]/div/div[1]/p[1]/span)/text()')[0]
@@ -428,7 +417,7 @@ def create_poll(teams):
 def main():
 
 	oauth = configparser.ConfigParser()
-	oauth.read('oauth.ini')
+	oauth.read(__location__ + 'oauth.ini')
 
 	players = get_yaml("players")
 	teams = get_yaml("teams")
@@ -456,7 +445,7 @@ def main():
 
 	# Load posts, comments, and messages
 	posts = r.get_subreddit(subreddit).get_new(limit = 20)
-	comments = []
+	comments = r.get_comments(subreddit, limit = 100)
 	messages = r.get_messages(limit = 15)
 
 	bot.log("Looking at messages")
@@ -475,12 +464,9 @@ def main():
 	bot.log("Looking at posts")
 	for post in posts:
 		if (post.link_flair_text == "Match" or post.link_flair_text == "Match has started") and "|" in post.title:
-			post.replace_more_comments(limit = 15, threshold = 1)
-			comments.extend(praw.helpers.flatten_tree(post.comments))
-
 			if not file_string_exists("posts.txt", post.id):
 				found_teams = find_teams(post.title, teams, False)
-				found_players = find_players(post.selftext, players, True)
+				found_players = find_players(post.selftext, players)
 
 				poll_teams = [teams[team]['names'][0] for team in found_teams]
 				strawpoll = create_poll(poll_teams)
@@ -510,7 +496,7 @@ def main():
 				continue
 
 			# Skip comment if it is deleted.
-			if comment.body == None or comment.author == None:
+			if comment.body == None or comment.author.name == None:
 				continue
 
 			# Let's not reply to ourselves or ignored users.

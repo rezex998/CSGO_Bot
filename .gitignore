@@ -1,3 +1,6 @@
 __pycache__/
 .remote-sync.json
 bot.py
+oauth.ini
+*.yaml
+*.txt
