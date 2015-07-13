@@ -14,36 +14,95 @@ from operator import itemgetter
 
 subreddit = "csgobetting"
 __author__ = "xoru"
-__version__ = "1.2-beta"
+__version__ = "1.3-beta"
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))) + '/'
 
 
-def file_string_exists(filename, string):
-	"""Checks if string exists in file (line by line search)."""
-	with open(__location__ + filename) as f:
+def get_nth_item(number, list):
+	"""Gets the nth item in a list/dict.
+
+	Args:
+		number (int): nth item of list to return.
+		list (list/dict): List with items.
+	Raises:
+		TypeError: If list is not iterable.
+	Returns:
+		The Python object found in list, None otherwise.
+
+	"""
+	i = 0
+	for item in list:
+		i += 1
+		if i == number:
+			return item
+	return None
+
+def file_string_exists(file, s):
+	"""Checks if s exists in file.
+
+	Args:
+		file (str): The file to search, typically a TXT file.
+		s (str): The string to search for.
+	Returns:
+		A boolean which will be True if s is found on its own line in file, False
+		otherwise.
+	Raises:
+		FileNotFoundError: If file is not found.
+		TypeError: If file is not a string.
+		AttributeError: If s is not a string.
+
+	"""
+	with open(__location__ + file) as f:
 		for l in f:
 			l = l.rstrip().lower()
-			if l == string.lower():
+			if l == s.lower():
 				return True
 	return False
 
-def file_string_append(filename, string):
-	"""Appends string to end of file."""
-	with open(__location__ + filename, 'a') as f:
-		f.write(string + '\n')
+def file_string_append(file, s):
+	"""Appends s to end of file.
 
-def file_string_remove(filename, string):
-	"""Removes string from file."""
+	Args:
+		file (str): The file where s will be appended.
+		s (str): The string to be appended.
+	Raises:
+		FileNotFoundError: If file is not found.
+		TypeError: If file or s is not a string.
+
+	"""
+	with open(__location__ + file, 'a') as f:
+		f.write(s + '\n')
+
+def file_string_remove(file, s):
+	"""Removes s from file.
+
+	Args:
+		file (str): The file from where s will be removed.
+		s (str): The string to be removed.
+	Raises:
+		FileNotFoundError: If file is not found.
+		TypeError: If file or s is not a string.
+
+	"""
 	lines = None
-	with open(__location__ + filename) as f:
+	with open(__location__ + file) as f:
 		lines = f.readlines()
-	with open(__location__ + filename, 'w') as f:
+	with open(__location__ + file, 'w') as f:
 		for line in lines:
-			if line != string + '\n':
+			if line != s + '\n':
 				f.write(line)
 
 def get_yaml(filename):
-	"""Gets the content of a YAML file."""
+	"""Gets the content of a YAML file.
+
+	Args:
+		filename (str): The filename of the .yaml file to retrieve.
+	Raises:
+		FileNotFoundError: If file is not found.
+	Returns:
+		A Python object.
+
+	"""
 	with open(__location__ + filename + ".yaml") as f:
 		file = yaml.load(f)
 	if not file:
@@ -51,20 +110,28 @@ def get_yaml(filename):
 	return file
 
 def set_yaml(filename, data):
-	"""Dumps data to a YAML file."""
+	"""Dumps data to a YAML file.
+
+	Args:
+		filename (str): The filename of the .yaml file to set.
+		data (obj): Data to dump. Typically a dict.
+	Raises:
+		FileNotFoundError: If file is not found.
+
+	"""
 	with open(__location__ + filename + ".yaml", "w") as f:
 		yaml.dump(data, f, default_flow_style=False)
 
-def add_csgonuts():
-	"""
-	Adds 'csgonuts' key to teams that are in csgonuts.txt.
+def add_csgonuts(teams):
+	"""Adds 'csgonuts' key to teams that are in csgonuts.txt.
 
 	csgonuts.txt is filled with a simple web-scraper.
-	The value is the team's name on csgonuts, as decided in csgonuts.txt
-	"""
-	teams = get_yaml('teams')
-	found = {}
 
+	Args:
+		teams (dict): Full team list, typically provided from get_yaml("teams").
+
+	"""
+	found = {}
 	for team in teams:
 		for name in teams[team]['names']:
 			team_name = name.replace(" ", "")
@@ -79,7 +146,16 @@ def add_csgonuts():
 	set_yaml('teams', teams)
 
 def update_teams(id = 0):
-	"""Updates teams and stores them in teams.yaml. Fetches data from HLTV.org."""
+	"""Updates teams and stores them in teams.yaml.
+
+	Data is fetched from HLTV.org.
+
+	Args:
+		id (int): ID to start incrementing from
+	Raises:
+		TypeError: If id is not an integer.
+
+	"""
 	# TODO: Update this old function. (and update_players())
 	invalid = 0
 	while invalid < 50:
@@ -104,11 +180,21 @@ def update_teams(id = 0):
 		# Check if team has played at least one match in 2014 or later.
 		if int(maps_played) > 0 and int(latest_match.split()[1]) >= 14:
 			teams = get_yaml("teams")
-			teams.update({id: {"names": [str(name)]}})
-			set_yaml("teams", teams)
+			if id not in teams:
+				teams.update({id: {"names": [str(name)]}})
+				set_yaml("teams", teams)
 
 def update_players(id = 0):
-	"""Updates players and stores them in players.yaml. Fetches data from HLTV.org."""
+	"""Updates players and stores them in players.yaml.
+
+	Data is fetched from HLTV.org.
+
+	Args:
+		id (int): ID to start incrementing from.
+	Raises:
+		TypeError: If id is not an integer.
+
+	"""
 	invalid = 0
 	while invalid < 50:
 		id += 1
@@ -127,21 +213,32 @@ def update_players(id = 0):
 		page = requests.get("http://www.hltv.org/?pageid=246&playerid=" + str(id)) # Match history page
 		tree = html.fromstring(page.text)
 
+		# Try/catch block for seeing if the player has a match on record
 		try:
 			latest_match = tree.xpath('(//div[normalize-space(text())="Team1"]/../../div[6]/div/div[1]/a)/text()')[0]
 		except IndexError:
+			# Nope... let's move on to the next player
 			continue
 
 		# Check if player has played at least one match in 2014 or later
 		if int(maps_played) > 0 and int(latest_match.split()[1]) >= 14:
 			players = get_yaml("players")
-			players.update({id: {"name": str(name)}})
+			players.update({id: str(name)})
 			set_yaml("players", players)
+			bot.log("Added " + str(name))
 
 def find_teams(text, teams, case_sensitive = False):
-	"""
-	Searches for team names and abbreviations in a text.
-	Team list needs to be provided in the teams variable (from get_teams() function).
+	"""Finds team names and abbreviations in a text.
+
+	Args:
+		text (str): Text to search.
+		teams (dict): Full team list, typically provided from get_yaml("teams").
+		case_sensitive (bool): If search should be case sensitive with team names.
+	Raises:
+		TypeError: If text is not a string. If teams is not a dict.
+	Returns:
+		A list of the found team's ID's,
+
 	"""
 	if text is None:
 		return None
@@ -168,9 +265,17 @@ def find_teams(text, teams, case_sensitive = False):
 	return found_teams
 
 def find_players(text, players, case_sensitive = False):
-	"""
-	Searches for player names in a text.
-	Player list needs to be provided in the players variable (from get_players() function).
+	"""Find player names in a text.
+
+	Args:
+		text (str): Text to search.
+		players (dict): Full player list, typically provided from get_yaml("players")
+		case_sensitive (bool): If search should be case sensitive with player names.
+	Raises:
+		TypeError: If text is not a string. If players is not a dict.
+	Returns:
+		A list of the found player's id's.
+
 	"""
 	if text is None:
 		return None
@@ -182,7 +287,7 @@ def find_players(text, players, case_sensitive = False):
 	text = text.replace(",", " ").replace(".", " ").replace("(", " ").replace(")", " ").replace("[", " ").replace("]", " ")
 
 	for player in players:
-		name = players[player]['name']
+		name = players[player]
 		if not case_sensitive:
 			name = name.lower()
 
@@ -190,10 +295,21 @@ def find_players(text, players, case_sensitive = False):
 			found_players.append(player)
 	return found_players
 
-def get_player_stats(found_players, players):
-	"""Gets player statistics from HLTV."""
+def get_player_stats(players, all_players):
+	"""Gets player statistics from HLTV.
+
+	Args:
+		players (list): List of players to get statistics on.
+		all_players (dict): Full player list, typically provided by get_yaml("players").
+	Raises:
+		TypeError: If players is not a list. If all_players is not a dict.
+	Returns:
+		A list of dicts, one dict for each player. The dict contains statistics about
+		the player.
+
+	"""
 	player_stats = []
-	for player in found_players:
+	for player in players:
 		url = "http://www.hltv.org/?pageid=173&playerid=" + str(player) # Overview page
 		page = requests.get(url)
 		tree = html.fromstring(page.text)
@@ -207,7 +323,7 @@ def get_player_stats(found_players, players):
 		kills_per_round = tree.xpath('(//div[normalize-space(text())="Average kills per round"]/../div[2])/text()')[0]
 
 		stats = {
-			'name':            players[player]['name'],
+			'name':            all_players[player],
 			'url':             url,
 			'team':            team,
 			'team_url':        team_url,
@@ -218,13 +334,26 @@ def get_player_stats(found_players, players):
 			'kills_per_round': kills_per_round
 		}
 		player_stats.append(stats)
-	player_stats = sorted(player_stats, key=itemgetter('rating'), reverse=True) # Sort by rating by default
+
+	# Sort by rating by default
+	player_stats = sorted(player_stats, key=itemgetter('rating'), reverse=True)
 	return player_stats
 
-def get_team_stats(found_teams, teams):
-	"""Gets team statistics from HLTV."""
+def get_team_stats(teams, all_teams):
+	"""Gets team statistics from HLTV.
+
+	Args:
+		teams (list): List of teams to get statistics on.
+		all_teams (dict): Full team list, typically provided by get_yaml("teams").
+	Raises:
+		TypeError: If teams is not a list. If all_teams is not a dict.
+	Returns:
+		A list of dicts, one dict for each team. The dict contains statistics about
+		the team.
+
+	"""
 	team_stats = []
-	for team in found_teams:
+	for team in teams:
 		url = "http://www.hltv.org/?pageid=179&teamid=" + str(team) # Overview page
 		page = requests.get(url)
 		tree = html.fromstring(page.text)
@@ -236,7 +365,7 @@ def get_team_stats(found_teams, teams):
 		win_percentage = str(round((int(wdl[0]) / total_played) * 100)) + "%"
 
 		stats = {
-			'name':              teams[team]['names'][0],
+			'name':              all_teams[team]['names'][0],
 			'url':               url,
 			'maps_played':       maps_played,
 			'wins_draws_losses': win_percentage,
@@ -267,16 +396,29 @@ def get_team_stats(found_teams, teams):
 			except IndexError:
 				break
 		team_stats.append(stats)
-	team_stats = sorted(team_stats, key=itemgetter('maps_played'), reverse=True) # Sort by maps_played by default
+
+	# Sort by maps_played by default
+	team_stats = sorted(team_stats, key=itemgetter('maps_played'), reverse=True)
 	return team_stats
 
 def get_matchup(team1, team2):
-	"""Gets matchup statistics between two teams from CSGOnuts."""
+	"""Gets matchup statistics between two teams from CSGOnuts.
+
+	Args:
+		team1 (dict): First team. Dict of team from get_yaml("teams").
+		team2 (dict): Second team. Dict of team from get_yaml("teams").
+	Raises:
+		TypeError: If team1 or team2 are not dictionaries.
+	Returns:
+		A dictionary with statistics if successful, None otherwise.
+
+	"""
 	if not team1 or not team2 or ('csgonuts' not in team1 or 'csgonuts' not in team2):
 		return None
 
 	page = requests.get("http://www.csgonuts.com/history?t1=" + team1['csgonuts'] + "&t2=" + team2['csgonuts'])
 	tree = html.fromstring(page.text)
+
 	try:
 		# If the two teams have not played against each other.
 		error_message = tree.xpath('(//div[contains(text(), "We have no record of match between")])/text()')[0]
@@ -292,8 +434,8 @@ def get_matchup(team1, team2):
 	matches_played = tree.xpath('(/html/body/div/div[2]/div[2]/div[2]/div[3]/div/div[1]/p[1]/span)/text()')[0]
 	matches_played = re.sub(r'\([^)]*\)', '', matches_played)
 	win_percentage = tree.xpath('(/html/body/div/div[2]/div[2]/div[2]/div[3]/div/div[1]/p[2]/span)/text()')[0]
-	maps = {}
 
+	maps = {}
 	# Fetch map statistics
 	for i in range(6):
 		try:
@@ -312,11 +454,29 @@ def get_matchup(team1, team2):
 	return matchup
 
 def construct_comment(found_teams, found_players, all_teams, all_players, strawpoll = None, is_root = False, edited_by = None):
-	"""Magically put everything together into markdown."""
-	if found_teams is None and found_players is None:
+	"""Magically put everything together into Markdown syntax.
+
+	Args:
+		found_teams (list): List of teams to include in the "Teams" table.
+		found_players (list): List of players to include in the "Players" table.
+		all_teams (dict): Full team list, typically provided from get_yaml("teams").
+		all_players (dict): Full player list, typically provided from get_yaml("players").
+		strawpoll (str): URL to strawpoll.
+		is_root (bool): If comment is a top-level-comment (no parents).
+		edited_by (str): Username of last redditor who edited the comment via commands.
+	Raises:
+		TypeError: If all_teams or all_players are not dictionaries. If strawpoll is not
+			a string. If found_teams or found_players are not lists.
+	Returns:
+		A string with Markdown syntax for posting on reddit.
+
+	"""
+	if not found_teams and not found_players:
 		return None
 
 	comment = ""
+	player_stats = None
+	team_stats = None
 
 	if found_players:
 		comment += "###Player Stats\n"
@@ -349,17 +509,7 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 				recent_matches + "\n"
 			)
 
-	matchup_team1 = None
-	matchup_team2 = None
-	for team in found_teams:
-		if matchup_team1 and matchup_team2:
-			break
-		if matchup_team1 is None:
-			matchup_team1 = all_teams[team]
-		else:
-			matchup_team2 = all_teams[team]
-
-	matchup = get_matchup(matchup_team1, matchup_team2)
+	matchup = get_matchup(all_teams[get_nth_item(1, found_teams)], all_teams[get_nth_item(2, found_teams)])
 
 	if matchup:
 		comment += (
@@ -382,12 +532,12 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 
 	if is_root:
 		# If no or less than 10 players (or 2 teams) are found, add a notice.
-		if (player_stats is None) or (len(player_stats) < 10) or (team_stats is None) or (len(team_stats) < 2):
+		if not player_stats or len(player_stats) < 10 or not team_stats or len(team_stats) < 2:
 			comment += "\n^(Missing players/teams detected. This could be due to there not being any information on them on HLTV.)\n"
 
 	comment += "\n^(**Note:** Adding irrelevant players or teams will result in being added to the bot ignore list without warning.)\n"
 
-	if edited_by is not None:
+	if edited_by:
 		comment += "\n^(Last edited by: /u/" + edited_by + ")\n"
 
 	comment += (
@@ -400,7 +550,14 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 	return comment
 
 def create_poll(teams):
-	"""Creates a strawpoll."""
+	"""Creates a strawpoll.
+
+	Args:
+		teams (list): A list of team names.
+	Returns:
+		If successful, a string with the URL of the newly created strawpoll, False
+		otherwise.
+	"""
 	if len(teams) < 2:
 		return False
 	data = {
@@ -415,7 +572,9 @@ def create_poll(teams):
 	return False
 
 def main():
+	"""CSGO_Bot's main function. This script is called every 5 minutes through cron.
 
+	"""
 	oauth = configparser.ConfigParser()
 	oauth.read(__location__ + 'oauth.ini')
 
@@ -496,7 +655,7 @@ def main():
 				continue
 
 			# Skip comment if it is deleted.
-			if comment.body == None or comment.author.name == None:
+			if comment.body == None or comment.author == None:
 				continue
 
 			# Let's not reply to ourselves or ignored users.
@@ -506,8 +665,6 @@ def main():
 			# Skip comments that have both remove and add commands.
 			if ("+p" in comment.body.lower() and "-p" in comment.body.lower()) or ("+t" in comment.body.lower() and "-t" in comment.body.lower()):
 				continue
-
-			bot.log("Looking at comment.")
 
 			case_sensitivity = False
 			remove_players = False
@@ -543,7 +700,7 @@ def main():
 			if found_players or found_teams:
 				if "+reply" not in comment.body.lower() and comment.is_root == False:
 					parent = r.get_info(thing_id=comment.parent_id)
-					if parent.author.name == "CSGO_Bot":
+					if parent.author and parent.author.name == "CSGO_Bot":
 
 						replies = get_yaml("replies")
 						parent_players = replies[parent.id]['players']
@@ -607,15 +764,27 @@ def main():
 								if player_difference:
 									message += "Players detected: "
 
-									# Find out which players added are new ones
-									new_players = [player for player in found_players if player not in parent_players]
-									bot.log(str(found_players))
-									message += ", ".join("[" + found_players[player]['name'] + "](http://www.hltv.org/?pageid=173&playerid=" + player + ")" for player in new_players) + "\n\n"
+									# Find out which players are added/removed
+									if remove_players:
+										affected_players = found_players
+									else:
+										affected_players = [player for player in found_players if player not in parent_players]
+
+									bot.log("New players: " + str(affected_players))
+									message += ", ".join("[" + players[player] + "](http://www.hltv.org/?pageid=173&playerid=" + str(player) + ")" for player in affected_players) + "\n\n"
 
 								if team_difference:
 									message += "Teams detected: "
-									new_teams = [team for team in found_teams if team not in parent_teams]
-									message += ", ".join("[" + found_teams[team]['names'][0] + "](http://www.hltv.org/?pageid=179&teamid=" + team + ")" for team in new_teams) + "\n\n"
+
+									# Find out which teams are added/removed
+									if remove_teams:
+										affected_teams = found_teams
+									else:
+										affected_teams = [team for team in found_teams if team not in parent_teams]
+
+									bot.log("Found teams: " + str(affected_teams))
+									message += ", ".join("[" + teams[team]['names'][0] + "](http://www.hltv.org/?pageid=179&teamid=" + team + ")" for team in affected_teams) + "\n\n"
+
 
 								message += "---\n^(This was an automated message. If you don't want to receive confirmation on summoning, click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20No%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.)."
 								r.send_message(comment.author.name, "Edit successful", message)
@@ -640,7 +809,7 @@ if __name__ == "__main__":
 	try:
 		main()
 		bot.log("Done!")
-		sys.exit(1) # No unclosed socket ResourceWarning.
+		sys.exit(1)
 	except KeyboardInterrupt:
 		bot.log("Forcefully quit.")
 		sys.exit(1)
