@@ -509,7 +509,9 @@ def construct_comment(found_teams, found_players, all_teams, all_players, strawp
 				recent_matches + "\n"
 			)
 
-	matchup = get_matchup(all_teams[get_nth_item(1, found_teams)], all_teams[get_nth_item(2, found_teams)])
+	matchup_team1 = all_teams[get_nth_item(1, found_teams)]
+	matchup_team2 = all_teams[get_nth_item(2, found_teams)]
+	matchup = get_matchup(matchup_team1, matchup_team2)
 
 	if matchup:
 		comment += (
