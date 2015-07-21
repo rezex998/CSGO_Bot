@@ -805,6 +805,8 @@ def main():
 					reply = construct_comment(found_teams, found_players, teams, players, None, False, comment.author.name)
 					added_comment = comment.reply(reply)
 
+					file_string_append("comments.txt", comment.id)
+
 					replies = get_yaml("replies")
 					replies.update({added_comment.id: {
 						'players':   found_players,
