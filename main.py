@@ -326,7 +326,7 @@ def get_player_stats(players, all_players):
 			'name':            all_players[player],
 			'url':             url,
 			'team':            team,
-			'team_url':        team_url,
+			'team_url':        'http://hltv.org' + team_url,
 			'rating':          rating,
 			'total_kills':     total_kills,
 			'total_deaths':    total_deaths,
