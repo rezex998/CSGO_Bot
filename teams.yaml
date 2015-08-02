@@ -39,6 +39,9 @@
   csgonuts: k1ck
   names:
   - k1ck
+4475:
+  names:
+  - ROCCAT
 4476:
   names:
   - hiGhrollers
@@ -798,6 +801,10 @@
 5525:
   names:
   - NorthernGrade
+5531:
+  csgonuts: Bovines
+  names:
+  - Bovines
 5537:
   names:
   - GamePub.ENTiTY
@@ -875,9 +882,17 @@
 5599:
   names:
   - Dobry&Gaming
+5607:
+  csgonuts: SYF
+  names:
+  - SYF
 5608:
   names:
   - PangaFett
+5611:
+  csgonuts: Dynasty
+  names:
+  - Dynasty
 5613:
   csgonuts: INSHOCK
   names:
@@ -981,6 +996,10 @@
   csgonuts: Mobility
   names:
   - Mobility
+5718:
+  csgonuts: Boreal
+  names:
+  - Boreal
 5722:
   csgonuts: aimface
   names:
@@ -1269,6 +1288,10 @@
   csgonuts: Torqued
   names:
   - Torqued
+5907:
+  csgonuts: WinOut.net
+  names:
+  - WinOut.net
 5926:
   csgonuts: Clutchit.org
   names:
@@ -1296,6 +1319,10 @@
   csgonuts: Vikings
   names:
   - Vikings
+5946:
+  csgonuts: Evolution
+  names:
+  - Evolution
 5949:
   csgonuts: PiTER
   names:
@@ -1359,6 +1386,10 @@
   csgonuts: affNity
   names:
   - affNity
+5999:
+  csgonuts: ISKOLD
+  names:
+  - ISKOLD
 6009:
   csgonuts: FenixFire
   names:
@@ -1391,6 +1422,10 @@
   csgonuts: XPC
   names:
   - XPC
+6029:
+  csgonuts: UNLEASHED
+  names:
+  - UNLEASHED
 6031:
   csgonuts: Acer
   names:
@@ -1424,6 +1459,14 @@
   csgonuts: TRICKED
   names:
   - TRICKED
+6051:
+  csgonuts: LDLCBlue
+  names:
+  - LDLC Blue
+6057:
+  csgonuts: MostlyHarmless
+  names:
+  - Mostly Harmless
 6059:
   csgonuts: Rock
   names:
@@ -1543,6 +1586,10 @@
   csgonuts: VegaSquadron
   names:
   - Vega Squadron
+6097:
+  csgonuts: Steelseries
+  names:
+  - Steelseries
 6098:
   csgonuts: Nihilum
   names:
@@ -1611,14 +1658,37 @@
   csgonuts: TempoStorm
   names:
   - Tempo Storm
+6121:
+  csgonuts: NobleHonor
+  names:
+  - Noble Honor
+6124:
+  names:
+  - Epsilon
 6125:
   csgonuts: '228'
   names:
   - '228'
+6127:
+  csgonuts: MiA
+  names:
+  - MiA
+6128:
+  csgonuts: JakeBube
+  names:
+  - Jake Bube
+6129:
+  csgonuts: mesport.hu
+  names:
+  - mesport.hu
 6130:
   csgonuts: AlienTech.Black
   names:
   - AlienTech.Black
+6131:
+  csgonuts: beGenius
+  names:
+  - beGenius
 6132:
   csgonuts: Method
   names:
@@ -1719,6 +1789,10 @@
   csgonuts: myRevenge
   names:
   - myRevenge
+6195:
+  csgonuts: QeeYou
+  names:
+  - QeeYou
 6198:
   csgonuts: KDDA
   names:
@@ -1759,3 +1833,51 @@
   csgonuts: Argentina
   names:
   - Argentina
+6211:
+  csgonuts: Renegades
+  names:
+  - Renegades
+6213:
+  csgonuts: ENSO
+  names:
+  - Enso
+6220:
+  csgonuts: Epiphany
+  names:
+  - Epiphany
+6222:
+  csgonuts: k1ck
+  names:
+  - k1ck
+6240:
+  csgonuts: Acerfe
+  names:
+  - Acer fe
+6241:
+  csgonuts: LGBfe
+  names:
+  - LGB fe
+6242:
+  csgonuts: CLGRed
+  names:
+  - CLG Red
+6243:
+  csgonuts: Games4ufe
+  names:
+  - Games4u fe
+6244:
+  csgonuts: Dexterityfe
+  names:
+  - Dexterity fe
+6245:
+  csgonuts: eBettle
+  names:
+  - eBettle
+6247:
+  csgonuts: NeckBreak
+  names:
+  - NeckBreak
+6248:
+  csgonuts: TheMongolz
+  names:
+  - TheMongolz

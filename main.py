@@ -145,88 +145,6 @@ def add_csgonuts(teams):
 
 	set_yaml('teams', teams)
 
-def update_teams(id = 0):
-	"""Updates teams and stores them in teams.yaml.
-
-	Data is fetched from HLTV.org.
-
-	Args:
-		id (int): ID to start incrementing from
-	Raises:
-		TypeError: If id is not an integer.
-
-	"""
-	# TODO: Update this old function. (and update_players())
-	invalid = 0
-	while invalid < 50:
-		id += 1
-		page = requests.get("http://www.hltv.org/?pageid=179&teamid=" + str(id))
-		tree = html.fromstring(page.text)
-
-		name = tree.xpath('(//div[contains(text(), "Team stats: ")])/text()')[0].replace("Team stats: ", "").strip()
-		maps_played = tree.xpath('(//div[normalize-space(text())="Maps played"]/../div[2])/text()')[0]
-
-		if str(name) == "No team":
-			invalid += 1
-			bot.log("No team found")
-			continue
-
-		invalid = 0
-		page = requests.get("http://www.hltv.org/?pageid=188&teamid=" + str(id))
-		tree = html.fromstring(page.text)
-
-		latest_match = tree.xpath('(//div[normalize-space(text())="Team1"]/../../div[6]/div/a[1]/div)/text()')[0]
-
-		# Check if team has played at least one match in 2014 or later.
-		if int(maps_played) > 0 and int(latest_match.split()[1]) >= 14:
-			teams = get_yaml("teams")
-			if id not in teams:
-				teams.update({id: {"names": [str(name)]}})
-				set_yaml("teams", teams)
-
-def update_players(id = 0):
-	"""Updates players and stores them in players.yaml.
-
-	Data is fetched from HLTV.org.
-
-	Args:
-		id (int): ID to start incrementing from.
-	Raises:
-		TypeError: If id is not an integer.
-
-	"""
-	invalid = 0
-	while invalid < 50:
-		id += 1
-
-		page = requests.get("http://www.hltv.org/?pageid=173&playerid=" + str(id)) # Overview page
-		tree = html.fromstring(page.text)
-
-		name = tree.xpath('(//div[normalize-space(text())="Primary team:"]/../../../div[1]/div[2])/text()')[0]
-		maps_played = tree.xpath('(//div[normalize-space(text())="Maps played"]/../div[2])/text()')[0]
-
-		if str(name) == "N/A":
-			invalid += 1
-			continue
-
-		invalid = 0
-		page = requests.get("http://www.hltv.org/?pageid=246&playerid=" + str(id)) # Match history page
-		tree = html.fromstring(page.text)
-
-		# Try/catch block for seeing if the player has a match on record
-		try:
-			latest_match = tree.xpath('(//div[normalize-space(text())="Team1"]/../../div[6]/div/div[1]/a)/text()')[0]
-		except IndexError:
-			# Nope... let's move on to the next player
-			continue
-
-		# Check if player has played at least one match in 2014 or later
-		if int(maps_played) > 0 and int(latest_match.split()[1]) >= 14:
-			players = get_yaml("players")
-			players.update({id: str(name)})
-			set_yaml("players", players)
-			bot.log("Added " + str(name))
-
 def find_teams(text, teams, case_sensitive = False):
 	"""Finds team names and abbreviations in a text.
 
@@ -326,7 +244,7 @@ def get_player_stats(players, all_players):
 			'name':            all_players[player],
 			'url':             url,
 			'team':            team,
-			'team_url':        'http://hltv.org' + team_url,
+			'team_url':        'http://www.hltv.org' + team_url,
 			'rating':          rating,
 			'total_kills':     total_kills,
 			'total_deaths':    total_deaths,
@@ -790,7 +708,7 @@ def main():
 										affected_teams = [team for team in found_teams if team not in parent_teams]
 
 									bot.log("Found teams: " + str(affected_teams))
-									message += ", ".join("[" + teams[team]['names'][0] + "](http://www.hltv.org/?pageid=179&teamid=" + team + ")" for team in affected_teams) + "\n\n"
+									message += ", ".join("[" + teams[team]['names'][0] + "](http://www.hltv.org/?pageid=179&teamid=" + str(team) + ")" for team in affected_teams) + "\n\n"
 
 
 								message += "---\n^(This was an automated message. If you don't want to receive confirmation on summoning, click) ^[here](http://www.reddit.com/message/compose/?to=CSGO_Bot&subject=COMMAND:%20No%20PM&message=Do%20not%20change%20the%20subject%20text,%20just%20click%20send.)."
